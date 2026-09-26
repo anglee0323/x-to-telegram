@@ -1,0 +1,43 @@
+name: X to Telegram Sync
+
+on:
+  workflow_dispatch:
+  # Uncomment the following lines to run automatically on a schedule via GitHub Actions:
+  # schedule:
+  #   - cron: '*/5 * * * *'  # Runs every 5 minutes
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run sync
+        env:
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+          TWITTER_USERNAME: ${{ secrets.TWITTER_USERNAME || vars.TWITTER_USERNAME }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID || vars.TELEGRAM_CHANNEL_ID }}
+          SYNC_HASHTAG: ${{ vars.SYNC_HASHTAG }}
+        run: python main.py
+
+      - name: Commit and push state changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --staged --quiet || (git commit -m "Update sync state [skip ci]" && git pull --rebase && git push)
